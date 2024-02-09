@@ -10,3 +10,8 @@ license = "LICENSE"
 [dependencies]
 sqlx = "0.7.3"
 tide = "0.16.0"
+
+tokio = { version = "=1", features = ["macros", "rt-multi-thread", "time", "tracing", "fs", "bytes"] }
+kube = { version = "0.88.1", features = ["runtime", "derive"] }
+k8s-openapi = { version = "0.21.0", features = ["latest"] }
+futures = "0.3.30"
