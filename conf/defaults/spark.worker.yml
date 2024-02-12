@@ -1,0 +1,36 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: neutron-worker
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: worker
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - image: apache/spark:latest
+          name: worker
+          command: 
+            - /bin/bash
+          args:
+            - -c
+            - /opt/spark/sbin/start-worker.sh spark://${SPARK_MANAGER_SERVICE_HOST}:${SPARK_MANAGER_SERVICE_PORT}
+          env:
+            - name: SPARK_NO_DAEMONIZE
+              value: 'true'
+            - name: SPARK_JAR_URL
+              value: http://example.com/spark.jar
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/bash
+                  - -c
+                  - cd /opt/spark/work-dir && curl -I ${SPARK_JAR_URL}
