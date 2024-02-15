@@ -1,15 +1,35 @@
 #
 # This Makefile helps with development of placementd but is not required
 #
+include base.mk
+.PHONY: build clean develop
 
-.DEFAULT_GOAL := help
+### Kubernetes targets
+################################################################################
 
-.PHONY: apply delete
-apply: contrib/app.yml ## Apply the test kubernetes configuration
-	kubectl apply -f contrib/app.yml 
-delete: contrib/app.yml ## Delete the test kubernetes configuration
-	kubectl delete -f contrib/app.yml
+### Rust targets
+build: target/debug/placementd ## Build the Rust project
 
-.PHONY: help
-help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+SOURCES=$(shell find src -type f -iname '*.rs')
+target/debug/placementd: Cargo.toml $(SOURCES)
+	$(CARGO) build
+
+check: Cargo.toml $(SOURCES)
+	cargo fmt
+	cargo test
+################################################################################
+
+### General targets
+.PHONY: develop
+develop:  ## Set up the development environment
+	+$(MAKE) -C $@
+	$(foreach POD, \
+		$(shell $(KUBECTL) get pod -n placementd -o custom-columns=:metadata.name), \
+		$(KUBECTL) exec -n placementd $(POD) -- /bin/sh -c "pkill placementd || true" ; \
+		$(KUBECTL) cp -n placementd target/debug/placementd $(POD):/tmp/; )
+
+clean: ## Remove temprary targets
+	+$(MAKE) -C develop $@
+	+$(MAKE) -C migrations $@
+	$(CARGO) clean
+################################################################################

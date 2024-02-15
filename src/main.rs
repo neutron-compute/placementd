@@ -1,7 +1,10 @@
 use k8s_openapi::api::core::v1::Pod;
 use kube::{
-    api::{Api, DynamicObject, GroupVersionKind, ListParams, PatchParams, PostParams, Patch, ResourceExt},
-    Client, Discovery
+    api::{
+        Api, DynamicObject, GroupVersionKind, ListParams, Patch, PatchParams, PostParams,
+        ResourceExt,
+    },
+    Client, Discovery,
 };
 use std::env::*;
 use std::fs::File;
@@ -17,7 +20,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .without_time()
         .init();
     info!("Starting placementd");
+    let mut app = tide::new();
+    //app.at("static").serve_dir("www/static")?;
 
+    /*
     let conf_dir = std::fs::canonicalize(var("CONF_DIR").unwrap_or("conf".into()))
         .expect("Failed to canonicalize CONF_DIR");
     info!("Using the configuration directory: {conf_dir:?}");
@@ -33,9 +39,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("found pod {}", p.name_any());
     }
 
-    let mut app = tide::new();
-    app.at("static").serve_dir("www/static")?;
-
     let o: DynamicObject = serde_yaml::from_reader(File::open("conf/defaults/spark.manager.yml")?)?;
     println!("o: {o:?}");
     let gvk = GroupVersionKind::try_from(o.clone().types.unwrap())?;
@@ -49,10 +52,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         //let _r = api.patch("foo", &ssapply, &Patch::Apply(o)).await?;
         let _r = api.create(&params, &o).await?;
     }
+    */
 
     let bind_to = var("BIND_TO").unwrap_or("0.0.0.0:8080".into());
     info!("Starting the HTTP handler on {bind_to}");
-    //app.listen(bind_to).await?;
+    app.listen(bind_to).await?;
 
     Ok(())
 }

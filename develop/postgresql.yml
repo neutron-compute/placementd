@@ -1,0 +1,59 @@
+# This is a simple in-memory (effectively) deployment of PostgreSQL for testing
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: postgres
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-secret
+  namespace: postgres
+  labels:
+    app: postgres
+data:
+  POSTGRES_DB: placementd
+  POSTGRES_USER: placementd
+  POSTGRES_PASSWORD: VerySecure!
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  namespace: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          # PostgreSQL 15 is the latest AWS Aurora is compatible with
+          image: postgres:15
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: postgres-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: postgres
+  labels:
+    app: postgres
+spec:
+  type: NodePort
+  ports:
+    - port: 5432
+      nodePort: 30543
+  selector:
+    app: postgres

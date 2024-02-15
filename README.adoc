@@ -19,4 +19,19 @@ toc::[]
 == Design
 
 
+=== Database task system
+
+* When a runsubmit API call is is received a new task is created in the database: state = PLANNED
+* SubmitWorker does a SELECT * FROM tasks WHERE state = PLANNED FOR UPDATE LIMIT 1
+  * submits the Deployment to EKS
+  * busy-waits for the Deployment to be "Ready"
+  * submits the job via REST to the manager node
+  * updates the state to RUNNING
+* StatusWorker does a SELECT * FROM tasks WHERE state = RUNNING FOR UPDATE LIMIT 1
+* StatusWorker interrogates the REST API on the manager, for its status:
+  * if it's still running: then exit
+  * if it's finished: set state to COMPLETED
+* CleanupWorker does a SELECT * FROM tasks WHERE state = COMPLETED FOR UPDATE LIMIT 1
+  * Deletes resources in EKS
+  * Once resources are complete, set state to FINALIZED
 
