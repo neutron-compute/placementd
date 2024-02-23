@@ -8,7 +8,7 @@ readme = "README.md"
 license = "LICENSE"
 
 [dependencies]
-sqlx = { version = "0.7.3", features = ["sqlite", "runtime-async-std"] }
+sqlx = { version = "0.7.3", features = ["runtime-async-std", "chrono", "json", "time", "uuid"] }
 tide = { version = "0.16.0", features = []}
 
 kube = { version = "0.88.1", features = ["runtime", "derive", "rustls-tls"] }
@@ -24,3 +24,16 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 surf = { version = "2.3.2", default-features = false, features = ["h1-client-rustls"] }
 serde_yaml = "0.9.31"
 dotenvy = "0.15.7"
+uuid = { version = "1.7.0", features = ["v4", "serde"] }
+serde_json = "1.0.113"
+
+[features]
+default = [
+        "postgres",
+        # Run our integration tests by default
+        "integration",
+        ]
+integration = []
+sqlite = ["sqlx/sqlite"]
+postgres = ["sqlx/postgres"]
+

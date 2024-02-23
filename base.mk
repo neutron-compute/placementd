@@ -3,6 +3,7 @@
 .DEFAULT_GOAL := help
 KUBECTL:=$(shell which kubectl)
 CARGO:=$(shell which cargo)
+DATABASE_URL:="postgres://placementd:VerySecure!@localhost:5432/placementd"
 
 .PHONY: help
 help: ## Display this help.

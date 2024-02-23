@@ -2,7 +2,7 @@
 # This Makefile helps with development of placementd but is not required
 #
 include base.mk
-.PHONY: build clean develop
+.PHONY: build clean develop migrations
 
 ### Kubernetes targets
 ################################################################################
@@ -12,7 +12,7 @@ build: target/debug/placementd ## Build the Rust project
 
 SOURCES=$(shell find src -type f -iname '*.rs')
 target/debug/placementd: Cargo.toml $(SOURCES)
-	$(CARGO) build
+	DATABASE_URL=$(DATABASE_URL) $(CARGO) build
 
 check: Cargo.toml $(SOURCES)
 	cargo fmt
@@ -28,6 +28,9 @@ develop:  ## Set up the development environment
 		$(KUBECTL) exec -n placementd $(POD) -- /bin/sh -c "pkill placementd || true" ; \
 		$(KUBECTL) cp -n placementd target/debug/placementd $(POD):/tmp/; )
 
+migrations: ## Run the migrations, must have `DATABASE_URL` set
+	+$(MAKE) -C $@
+	
 clean: ## Remove temprary targets
 	+$(MAKE) -C develop $@
 	+$(MAKE) -C migrations $@
