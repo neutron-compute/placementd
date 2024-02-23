@@ -15,6 +15,26 @@ link:https://airflow.apache.org[Apache Airflow].
 
 toc::[]
 
+== Documentation
+
+=== Environment Variables
+
+|===
+| Name | Default | Description
+
+| `BIND_TO`
+| `0.0.0.0:8080`
+| IP address and port to bind the HTTP/API server to
+
+| `DATABASE_URL`
+|
+| Full database connection string (e.g. `postgres://postgres-host/mydb`)
+
+| `RUST_LOG`
+|
+| Logging level to set, e.g. `debug`, `info`, `warn, `error`
+
+|===
 
 == Design
 

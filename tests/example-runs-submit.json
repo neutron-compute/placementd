@@ -1,0 +1,145 @@
+{
+  "tasks": [
+    {
+      "task_key": "Sessionize",
+      "description": "Extracts session data from events",
+      "depends_on": [],
+      "timeout_seconds": 86400,
+      "spark_jar_task": {
+        "main_class_name": "com.databricks.Sessionize",
+        "parameters": [
+          "--data",
+          "dbfs:/path/to/data.json"
+        ]
+      },
+      "libraries": [
+        {
+          "jar": "dbfs:/mnt/databricks/Sessionize.jar"
+        }
+      ],
+      "existing_cluster_id": "0923-164208-meows279",
+      "run_if": "ALL_SUCCESS"
+    },
+    {
+      "task_key": "Orders_Ingest",
+      "description": "Ingests order data",
+      "depends_on": [],
+      "timeout_seconds": 86400,
+      "spark_jar_task": {
+        "main_class_name": "com.databricks.OrdersIngest",
+        "parameters": [
+          "--data",
+          "dbfs:/path/to/order-data.json"
+        ]
+      },
+      "libraries": [
+        {
+          "jar": "dbfs:/mnt/databricks/OrderIngest.jar"
+        }
+      ],
+      "existing_cluster_id": "0923-164208-meows279",
+      "run_if": "ALL_SUCCESS"
+    },
+    {
+      "task_key": "Match",
+      "description": "Matches orders with user sessions",
+      "notebook_task": {
+        "notebook_path": "/Users/user.name@databricks.com/Match",
+        "base_parameters": {
+          "name": "John Doe",
+          "age": "35"
+        }
+      },
+      "depends_on": [
+        {
+          "task_key": "Orders_Ingest"
+        },
+        {
+          "task_key": "Sessionize"
+        }
+      ],
+      "new_cluster": {
+        "spark_version": "7.3.x-scala2.12",
+        "node_type_id": null,
+        "spark_conf": {
+          "spark.speculation": true
+        },
+        "autoscale": {
+          "min_workers": 2,
+          "max_workers": 16
+        }
+      },
+      "timeout_seconds": 86400,
+      "run_if": "ALL_SUCCESS"
+    }
+  ],
+  "run_name": "A multitask job run",
+  "git_source": {
+    "git_url": "https://github.com/databricks/databricks-cli",
+    "git_branch": "main",
+    "git_provider": "gitHub"
+  },
+  "timeout_seconds": 86400,
+  "health": {
+    "rules": [
+      {
+        "metric": "RUN_DURATION_SECONDS",
+        "op": "GREATER_THAN",
+        "value": 10
+      }
+    ]
+  },
+  "email_notifications": {
+    "on_start": [
+      "user.name@databricks.com"
+    ],
+    "on_success": [
+      "user.name@databricks.com"
+    ],
+    "on_failure": [
+      "user.name@databricks.com"
+    ],
+    "on_duration_warning_threshold_exceeded": [
+      "user.name@databricks.com"
+    ],
+    "no_alert_for_skipped_runs": false
+  },
+  "webhook_notifications": {
+    "on_start": [
+      {
+        "id": "0481e838-0a59-4eff-9541-a4ca6f149574"
+      }
+    ],
+    "on_success": [
+      {
+        "id": "0481e838-0a59-4eff-9541-a4ca6f149574"
+      }
+    ],
+    "on_failure": [
+      {
+        "id": "0481e838-0a59-4eff-9541-a4ca6f149574"
+      }
+    ],
+    "on_duration_warning_threshold_exceeded": [
+      {
+        "id": "0481e838-0a59-4eff-9541-a4ca6f149574"
+      }
+    ]
+  },
+  "notification_settings": {
+    "no_alert_for_skipped_runs": false,
+    "no_alert_for_canceled_runs": false
+  },
+  "idempotency_token": "8f018174-4792-40d5-bcbc-3e6a527352c8",
+  "queue": {
+    "enabled": true
+  },
+  "access_control_list": [
+    {
+      "user_name": "string",
+      "group_name": "string",
+      "service_principal_name": "string",
+      "permission_level": "CAN_MANAGE"
+    }
+  ]
+}
