@@ -17,6 +17,23 @@ toc::[]
 
 == Documentation
 
+
+=== Development
+
+The full development stack for `placementd` requires Kubernetes, which for
+local development purposes can be accomplished with
+link:https://kind.sigs.k8s.io/[kind]. Launching the cluster should be done
+with: `kind cluster create --config contrib/kind.yml`
+
+Once `kind` is up and running, there are a number of `make` targets defined in
+the `Makefile` to help with development, simply running `make` will list the
+built-in help for these targets. Generally speaking `make migrations develop`
+will ensure that the development database (PostgreSQL running in `kind`) is
+configured and deployed.
+
+For simply running tests, `cargo test` can run the unit tests, while `make
+check` can run all unit and integration tests.
+
 === Environment Variables
 
 |===

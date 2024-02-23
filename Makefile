@@ -14,9 +14,9 @@ SOURCES=$(shell find src -type f -iname '*.rs')
 target/debug/placementd: Cargo.toml $(SOURCES)
 	DATABASE_URL=$(DATABASE_URL) $(CARGO) build
 
-check: Cargo.toml $(SOURCES)
-	cargo fmt
-	cargo test
+check: Cargo.toml $(SOURCES) migrations
+	$(CARGO) fmt
+	DATABASE_URL=$(DATABASE_URL) $(CARGO) check
 ################################################################################
 
 ### General targets
