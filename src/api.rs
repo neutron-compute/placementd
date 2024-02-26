@@ -3,7 +3,7 @@
 
 /// The v1 API
 pub mod v1 {
-    use crate::types::databricks::*;
+
     use crate::types::responses::v1::*;
     use crate::types::*;
 
@@ -32,7 +32,7 @@ pub mod v1 {
             ident,
             state: task.state,
         };
-        Ok(Body::from_json(&response)?)
+        Body::from_json(&response)
     }
 
     #[cfg(feature = "integration")]
@@ -46,6 +46,16 @@ pub mod v1 {
         async fn test_api() -> Server {
             let state = ServerState::from_env().await;
             super::routes(state).expect("Failed to get routes")
+        }
+
+        #[cfg(feature = "postgres")]
+        async fn test_pool() -> sqlx::PgPool {
+            // These hard-coded credentials are mirrored in develop/postgres.yml
+            let database_url = std::env::var("DATABASE_URL")
+                .unwrap_or("postgres://placementd:VerySecure!@127.0.0.1:5432".into());
+            sqlx::PgPool::connect(&database_url)
+                .await
+                .expect("Failed to connectto {database_url}")
         }
 
         #[async_std::test]
@@ -64,6 +74,12 @@ pub mod v1 {
 
             assert_eq!(response.state, crate::dal::TaskState::Planned);
             assert_ne!(response.ident, Uuid::new_v4());
+
+            let pool = test_pool().await;
+
+            let task = crate::dal::Task::lookup(&response.ident, &pool).await?;
+            assert_eq!(task.ident, response.ident);
+
             Ok(())
         }
     }

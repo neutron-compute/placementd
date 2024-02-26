@@ -67,7 +67,7 @@ impl Task {
         Ok(ident)
     }
 
-    async fn lookup(ident: &Uuid, pool: &sqlx::PgPool) -> Result<Self, sqlx::Error> {
+    pub async fn lookup(ident: &Uuid, pool: &sqlx::PgPool) -> Result<Self, sqlx::Error> {
         // sqlx doesn't directly support HStore, but can be coalesced to JSON, inspired by:
         // <https://stackoverflow.com/a/76855805>
         sqlx::query_as!(
