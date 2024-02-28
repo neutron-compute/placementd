@@ -7,6 +7,18 @@ pub mod db {
     use uuid::Uuid;
 
     ///
+    /// Bootstrap the [sqlx::PgPool] connection using the `DATABASE_URL` environment variable or
+    /// fall back to the default development credentials
+    ///
+    pub async fn bootstrap() -> sqlx::PgPool {
+        let database_url = std::env::var("DATABASE_URL")
+            .unwrap_or("postgres://placementd:VerySecure!@127.0.0.1:5432".into());
+        sqlx::PgPool::connect(&database_url)
+            .await
+            .expect("Failed to connectto {database_url}")
+    }
+
+    ///
     /// The state of a task in the work scheduling system
     ///
     #[derive(sqlx::Type, Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
@@ -62,6 +74,12 @@ pub mod db {
             let _ = sqlx::query!(r#"INSERT INTO tasks (ident) VALUES ($1)"#, ident)
                 .execute(&mut *tx)
                 .await?;
+            let _ = sqlx::query!(
+                r#"SELECT pg_notify('placementd-tasks', $1::text)"#,
+                ident.to_string()
+            )
+            .execute(&mut *tx)
+            .await?;
             tx.commit().await?;
             Ok(ident)
         }

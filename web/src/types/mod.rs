@@ -13,11 +13,7 @@ pub struct ServerState {
 
 impl ServerState {
     pub async fn from_env() -> Self {
-        let database_url = std::env::var("DATABASE_URL")
-            .unwrap_or("postgres://placementd:VerySecure!@127.0.0.1:5432".into());
-        let pool = sqlx::PgPool::connect(&database_url)
-            .await
-            .expect("Failed to connectto {database_url}");
+        let pool = placementd::db::bootstrap().await;
         Self { pool }
     }
 }
