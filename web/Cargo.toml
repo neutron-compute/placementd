@@ -1,0 +1,36 @@
+[package]
+name = "placementd-web"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+async-std = { workspace = true }
+chrono = { workspace = true }
+futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true }
+
+dotenvy = "0.15.7"
+k8s-openapi = { version = "0.21.0", features = ["latest"] }
+kube = { version = "0.88.1", features = ["runtime", "derive", "rustls-tls"] }
+serde_yaml = "0.9.31"
+surf = { version = "2.3.2", default-features = false, features = ["h1-client-rustls"] }
+tide = { version = "0.16.0", features = []}
+
+placementd = { path = "../common" }
+
+[features]
+default = [
+        # Run our integration tests by default
+        "integration",
+        ]
+integration = []
+
+[dev-dependencies]
+tide-testing = "0.1.3"
+

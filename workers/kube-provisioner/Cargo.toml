@@ -1,0 +1,12 @@
+[package]
+name = "kube-provisioner"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+async-std = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+placementd = { path = "../../common" }

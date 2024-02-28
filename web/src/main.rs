@@ -2,7 +2,6 @@ use std::env::*;
 use tracing::log::*;
 
 mod api;
-mod dal;
 mod types;
 
 #[async_std::main]

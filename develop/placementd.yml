@@ -31,5 +31,5 @@ spec:
             - /bin/sh
           args:
             - -c
-            - while true; do /tmp/placementd; sleep 1; done
+            - while true; do /tmp/placementd-web; sleep 1; done
           ports:

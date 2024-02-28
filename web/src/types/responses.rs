@@ -5,7 +5,7 @@
 ///
 /// The v1 responses are used by the v1 API only
 pub mod v1 {
-    use crate::dal::TaskState;
+    use placementd::db::TaskState;
     use serde::{Deserialize, Serialize};
     use uuid::Uuid;
 

@@ -24,7 +24,7 @@ pub mod v1 {
         //let request: RunsSubmitRequest = req.body_json().await?;
         let request: serde_json::Value = req.body_json().await?;
         println!("Recevied: {request:?}");
-        let task = crate::dal::Task::default();
+        let task = placementd::db::Task::default();
         let mut pool = req.state().pool.clone();
         let ident = task.save(&mut pool).await?;
 
@@ -48,7 +48,6 @@ pub mod v1 {
             super::routes(state).expect("Failed to get routes")
         }
 
-        #[cfg(feature = "postgres")]
         async fn test_pool() -> sqlx::PgPool {
             // These hard-coded credentials are mirrored in develop/postgres.yml
             let database_url = std::env::var("DATABASE_URL")
@@ -63,7 +62,8 @@ pub mod v1 {
             let app = test_api().await;
 
             let payload =
-                String::from_utf8_lossy(&std::fs::read("tests/example-runs-submit.json")?).into();
+                String::from_utf8_lossy(&std::fs::read("../tests/example-runs-submit.json")?)
+                    .into();
 
             let response: RunsSubmitted = app
                 .post("/runs/submit")
@@ -72,12 +72,12 @@ pub mod v1 {
                 .recv_json()
                 .await?;
 
-            assert_eq!(response.state, crate::dal::TaskState::Planned);
+            assert_eq!(response.state, placementd::db::TaskState::Planned);
             assert_ne!(response.ident, Uuid::new_v4());
 
             let pool = test_pool().await;
 
-            let task = crate::dal::Task::lookup(&response.ident, &pool).await?;
+            let task = placementd::db::Task::lookup(&response.ident, &pool).await?;
             assert_eq!(task.ident, response.ident);
 
             Ok(())
