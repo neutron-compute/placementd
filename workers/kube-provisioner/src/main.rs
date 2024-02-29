@@ -1,8 +1,10 @@
 ///
 /// The kube-provisioner worker simply looks for tasks to spawn into Kubernetes
 ///
+use placementd::db::Task;
 use sqlx::postgres::PgListener;
 use tracing::log::*;
+use uuid::Uuid;
 
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -19,10 +21,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pool = placementd::db::bootstrap().await;
     let mut listener = PgListener::connect_with(&pool).await?;
 
-    listener.listen("placementd-tasks").await?;
+    listener.listen("tasks-modified").await?;
 
     loop {
         let notification = listener.recv().await?;
         info!("notification: {notification:?}");
+        let uuid = Uuid::try_parse(notification.payload())?;
+        let task = Task::lookup(&uuid, &pool).await?;
+        info!("task: {task:?}");
     }
 }

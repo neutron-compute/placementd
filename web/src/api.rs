@@ -7,6 +7,7 @@ pub mod v1 {
     use crate::types::responses::v1::*;
     use crate::types::*;
 
+    use placementd::db::*;
     use tide::{Body, Result};
     use tracing::log::*;
 
@@ -23,15 +24,18 @@ pub mod v1 {
     pub async fn runs_submit(mut req: Request) -> Result<Body> {
         //let request: RunsSubmitRequest = req.body_json().await?;
         let request: serde_json::Value = req.body_json().await?;
-        println!("Recevied: {request:?}");
-        let task = placementd::db::Task::default();
-        let mut pool = req.state().pool.clone();
-        let ident = task.save(&mut pool).await?;
+        debug!("Recevied: {request:?}");
 
-        let response = RunsSubmitted {
-            ident,
-            state: task.state,
-        };
+        let mut tx = req.state().pool.begin().await?;
+
+        let task = Task::create(&mut tx).await.expect("Failed to create?");
+        let _ = SubmittedRun::create(&mut tx, &task, request)
+            .await
+            .expect("Failed somehow");
+
+        tx.commit().await?;
+
+        let response = RunsSubmitted::from(task);
         Body::from_json(&response)
     }
 
