@@ -29,5 +29,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let uuid = Uuid::try_parse(notification.payload())?;
         let task = Task::lookup(&uuid, &pool).await?;
         info!("task: {task:?}");
+
+        /*
+         * After a notified task has been executed, pick up another planned task to make sure
+         * dropped tasks are executed
+         */
     }
 }

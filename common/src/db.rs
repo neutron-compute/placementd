@@ -151,7 +151,7 @@ impl Task {
 
     pub async fn lock(
         tx: &mut Transaction<'_>,
-        ident: &Uuid,
+        ident: Option<&Uuid>,
         state: Option<TaskState>,
     ) -> Result<Self, sqlx::Error> {
         let state: String = state.unwrap_or(TaskState::Planned).into();
@@ -166,9 +166,13 @@ impl Task {
                     state AS "state!: TaskState",
                     COALESCE(hstore_to_json(tags), '{}'::json) AS tags
                     FROM tasks
-                    WHERE
+                WHERE
+                    CASE WHEN $1::uuid IS NULL THEN
+                        NULL IS NULL
+                    ELSE
                         ident = $1
-                        AND state = $2
+                    END
+                    AND state = $2
                 -- Lock the row for our transaction
                 FOR UPDATE SKIP LOCKED
                         "#,
@@ -237,7 +241,7 @@ mod integration_tests {
         tx.commit().await.expect("Failed to commit transaction");
 
         let mut tx = pool.begin().await.expect("Failed to start transaction");
-        let task = Task::lock(&mut tx, &original_task.ident, None)
+        let task = Task::lock(&mut tx, Some(&original_task.ident), None)
             .await
             .expect("Failed to lock row");
         assert_eq!(task.ident, original_task.ident);
@@ -258,21 +262,21 @@ mod integration_tests {
 
         let mut tx = pool.begin().await.expect("Failed to start transaction");
         let locker = async_std::task::spawn(async move {
-            let task = Task::lock(&mut tx, &original_task.ident, None)
+            let task = Task::lock(&mut tx, Some(&original_task.ident), None)
                 .await
                 .expect("Failed to lock row");
             assert_eq!(task.ident, original_task.ident);
             assert_eq!(task.state, TaskState::Planned);
 
             // wait!
-            async_std::task::sleep(std::time::Duration::from_secs(1)).await;
+            async_std::task::sleep(std::time::Duration::from_secs(2)).await;
 
             tx.commit().await.expect("Failed to commit transaction");
         });
 
         let checker = async_std::task::spawn(async move {
             let mut tx = pool.begin().await.expect("Failed to start transaction");
-            match Task::lock(&mut tx, &original_task.ident, None).await {
+            match Task::lock(&mut tx, Some(&original_task.ident), None).await {
                 Ok(_) => assert!(
                     false,
                     "Should not have been able to return a non-existent record"
@@ -292,7 +296,47 @@ mod integration_tests {
 
         let mut tx = pool.begin().await.expect("Failed to start transaction");
         let fake = Uuid::new_v4();
-        match Task::lock(&mut tx, &fake, None).await {
+        match Task::lock(&mut tx, Some(&fake), None).await {
+            Ok(_) => assert!(
+                false,
+                "Should not have been able to return a non-existent record"
+            ),
+            Err(sqlx::Error::RowNotFound) => {} // expected
+            Err(others) => assert!(false, "Got an unexpected error: {others:?}"),
+        }
+        tx.commit().await.expect("Failed to commit transaction");
+    }
+
+    #[async_std::test]
+    async fn test_lock_latest() {
+        let pool = bootstrap().await;
+
+        // Create a task
+        let mut tx = pool.begin().await.expect("Failed to start transaction");
+        let _task = Task::create(&mut tx).await.expect("Failed to create task");
+        tx.commit().await.expect("Failed to commit transaction");
+
+        let mut tx = pool.begin().await.expect("Failed to start transaction");
+
+        match Task::lock(&mut tx, None, None).await {
+            Ok(_) => assert!(true),
+            Err(others) => assert!(false, "Got an unexpected error: {others:?}"),
+        }
+        tx.commit().await.expect("Failed to commit transaction");
+    }
+
+    #[async_std::test]
+    async fn test_lock_with_state() {
+        let pool = bootstrap().await;
+
+        // Create a task
+        let mut tx = pool.begin().await.expect("Failed to start transaction");
+        let task = Task::create(&mut tx).await.expect("Failed to create task");
+        tx.commit().await.expect("Failed to commit transaction");
+
+        let mut tx = pool.begin().await.expect("Failed to start transaction");
+
+        match Task::lock(&mut tx, Some(&task.ident), Some(TaskState::Completed)).await {
             Ok(_) => assert!(
                 false,
                 "Should not have been able to return a non-existent record"
