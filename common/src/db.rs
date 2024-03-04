@@ -253,6 +253,7 @@ mod integration_tests {
     #[async_std::test]
     async fn test_task_lock_conflict() {
         use async_std::prelude::FutureExt;
+        use async_std::task::JoinHandle;
 
         let pool = bootstrap().await;
 
@@ -261,20 +262,22 @@ mod integration_tests {
         tx.commit().await.expect("Failed to commit transaction");
 
         let mut tx = pool.begin().await.expect("Failed to start transaction");
-        let locker = async_std::task::spawn(async move {
-            let task = Task::lock(&mut tx, Some(&original_task.ident), None)
-                .await
-                .expect("Failed to lock row");
+        let locker: JoinHandle<Result<(), anyhow::Error>> = async_std::task::spawn(async move {
+            let task = Task::lock(&mut tx, Some(&original_task.ident), None).await?;
             assert_eq!(task.ident, original_task.ident);
             assert_eq!(task.state, TaskState::Planned);
 
             // wait!
-            async_std::task::sleep(std::time::Duration::from_secs(2)).await;
+            async_std::task::sleep(std::time::Duration::from_secs(1)).await;
 
-            tx.commit().await.expect("Failed to commit transaction");
+            tx.commit().await?;
+            Ok(())
         });
 
-        let checker = async_std::task::spawn(async move {
+        let checker: JoinHandle<Result<(), anyhow::Error>> = async_std::task::spawn(async move {
+            // Need to delay to ensure thatr the checker task doesn't get the lock first
+            async_std::task::sleep(std::time::Duration::from_secs(1)).await;
+
             let mut tx = pool.begin().await.expect("Failed to start transaction");
             match Task::lock(&mut tx, Some(&original_task.ident), None).await {
                 Ok(_) => assert!(
@@ -284,10 +287,13 @@ mod integration_tests {
                 Err(sqlx::Error::RowNotFound) => {} // expected
                 Err(others) => assert!(false, "Got an unexpected error: {others:?}"),
             }
-            tx.commit().await.expect("Failed to commit transaction");
+            tx.commit().await?;
+            Ok(())
         });
 
-        locker.join(checker).await;
+        let (locked, checked) = locker.join(checker).await;
+        assert!(locked.is_ok());
+        assert!(checked.is_ok());
     }
 
     #[async_std::test]

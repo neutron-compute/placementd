@@ -19,6 +19,7 @@ $(WEBAPP): Cargo.toml $(SOURCES)
 check: Cargo.toml $(SOURCES) migrations
 	$(CARGO) fmt
 	DATABASE_URL=$(DATABASE_URL) $(CARGO) check
+	DATABASE_URL=$(DATABASE_URL) $(CARGO) test
 ################################################################################
 
 ### General targets
