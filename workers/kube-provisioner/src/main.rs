@@ -27,8 +27,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let notification = listener.recv().await?;
         info!("notification: {notification:?}");
         let uuid = Uuid::try_parse(notification.payload())?;
-        let task = Task::lookup(&uuid, &pool).await?;
-        info!("task: {task:?}");
+
+        match pool.begin().await {
+            Ok(mut tx) => {
+                if let Ok(task) = Task::lock(&mut tx, Some(&uuid), None).await {
+                    info!("Found a task to work on: {task:?}");
+                }
+
+                if let Err(e) = tx.commit().await {
+                    error!("Failed to commit transaction! {e:?}");
+                }
+            }
+            Err(e) => error!("Failed to acquire a transaction: {e:?}"),
+        }
+
+        /*
+         * Pick up a lingering task if one is availble, this adds some resiliency to ensure that
+         * the tasks are not just worked up based on the NOTIFY
+         */
+        match pool.begin().await {
+            Ok(mut tx) => {
+                if let Ok(task) = Task::lock(&mut tx, None, None).await {
+                    info!("Found a lingering task to work on: {task:?}");
+                }
+
+                if let Err(e) = tx.commit().await {
+                    error!("Failed to commit transaction! {e:?}");
+                }
+            }
+            Err(e) => error!("Failed to acquire a transaction: {e:?}"),
+        }
 
         /*
          * After a notified task has been executed, pick up another planned task to make sure

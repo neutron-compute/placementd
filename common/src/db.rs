@@ -149,6 +149,8 @@ impl Task {
         Ok(task)
     }
 
+    /// Lock the identified task (`ident`) if present. If no options are presented, this function
+    /// will lock the latest [Task] in the `Planned` [TaskState]
     pub async fn lock(
         tx: &mut Transaction<'_>,
         ident: Option<&Uuid>,
