@@ -1,8 +1,0 @@
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: spark-manager-config
-data:
-  spark-defaults.conf: |
-    spark.master.rest.enabled true

@@ -5,9 +5,14 @@ edition.workspace = true
 
 [dependencies]
 async-std = { workspace = true }
+dotenvy = { workspace = true }
 sqlx = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
 
 placementd = { path = "../../common" }
+kube = { version = "0.88.1", features = ["derive"] }
+k8s-openapi = { version = "0.21.1", features = ["latest"] }

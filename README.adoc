@@ -47,6 +47,18 @@ check` can run all unit and integration tests.
 |
 | Full database connection string (e.g. `postgres://postgres-host/mydb`)
 
+| `CONFIG_S3_URL`
+|
+| Full URL for loading configuration
+
+| `CONFIG_SNS_TOPIC_ARN`
+|
+| An _optional_ SNS topic to be notified of for configuration changes
+
+| `KUBE_API_URL`
+|
+| URL to the Kubernetes API that `placementd` can trigger
+
 | `RUST_LOG`
 |
 | Logging level to set, e.g. `debug`, `info`, `warn, `error`

@@ -1,13 +1,18 @@
 ///
 /// The kube-provisioner worker simply looks for tasks to spawn into Kubernetes
 ///
+use kube::api::DynamicObject;
 use placementd::db::Task;
+use serde::Deserialize;
 use sqlx::postgres::PgListener;
 use tracing::log::*;
 use uuid::Uuid;
 
+use std::fs::File;
+
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    dotenvy::dotenv()?;
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         // disable printing the name of the module in every log line.
@@ -15,7 +20,47 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // disabling time is handy because CloudWatch will add the ingestion time.
         .without_time()
         .init();
+    // The resources vec contains all the Spark resources to launch in kubernetes
+    let mut resources: Vec<DynamicObject> = vec![];
 
+    let cwd = std::env::current_dir()?;
+    let bundled = cwd.join("config/bundled/spark.yml");
+    if !bundled.exists() {
+        panic!("The configuration file is not present! I can't do anything without it, help!");
+    }
+    info!("Loading configuration defaults from: {bundled:?}");
+    for document in serde_yaml::Deserializer::from_reader(File::open(bundled)?) {
+        resources.push(DynamicObject::deserialize(document)?);
+    }
+
+    let spark_overrides = cwd.join("spark.overrides.yml");
+    if spark_overrides.exists() {
+        info!("Loading configuration overrides from {spark_overrides:?}");
+        for document in serde_yaml::Deserializer::from_reader(File::open(spark_overrides)?) {
+            let mut value = DynamicObject::deserialize(document)?;
+            if let Some(types) = &value.types {
+                let kind = &types.kind;
+                let name = value.metadata.name.unwrap_or("unknown".into());
+                debug!("Looking to override a {kind} named {name}");
+                resources = resources
+                    .into_iter()
+                    .map(|mut resource| {
+                        if let Some(types) = &resource.types {
+                            if kind == &types.kind && resource.metadata.name.as_ref() == Some(&name)
+                            {
+                                placementd::merge_json(&mut value.data, resource.data.clone());
+                                debug!("Configurtation data merged into: {:?}", value.data);
+                                resource.data = value.data.clone();
+                            }
+                        }
+                        resource
+                    })
+                    .collect();
+            } else {
+                warn!("Override file does not contain enough oof a YAML fragment to understand: {value:?}");
+            }
+        }
+    }
     info!("Starting placementd kube-provisioner");
 
     let pool = placementd::db::bootstrap().await;
@@ -57,10 +102,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(e) => error!("Failed to acquire a transaction: {e:?}"),
         }
-
-        /*
-         * After a notified task has been executed, pick up another planned task to make sure
-         * dropped tasks are executed
-         */
     }
 }

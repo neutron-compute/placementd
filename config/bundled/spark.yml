@@ -1,0 +1,173 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-driver
+spec:
+  selector:
+    app: driver
+  ports:
+    - protocol: TCP
+      port: 7077
+      targetPort: 7077
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-rest
+spec:
+  selector:
+    app: driver
+  ports:
+    - protocol: TCP
+      port: 6066
+      targetPort: 6066
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: driver
+  namespace: neutron
+spec:
+  selector:
+    matchLabels:
+      app: driver
+  replicas: 0
+  template:
+    metadata:
+      labels:
+        app: driver
+      annotations:
+    spec:
+      volumes:
+        - name: config-volume
+          configMap:
+            name: spark-master-config
+      containers:
+        - image: apache/spark:latest
+          name: driver
+          command: 
+            - /opt/spark/sbin/start-master.sh
+          env:
+            - name: SPARK_NO_DAEMONIZE
+              value: 'true'
+          ports:
+            - containerPort: 8080
+              name: web
+              protocol: TCP
+            - containerPort: 7070
+              name: driver
+              protocol: TCP
+            - containerPort: 6066
+              name: rest
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: web
+            initialDelaySeconds: 2
+          volumeMounts:
+            - name: config-volume
+              mountPath: /opt/spark/conf/spark-defaults.conf
+              subPath: spark-defaults.conf
+            - name: config-volume
+              mountPath: /opt/spark/deploy.py
+              subPath: deploy.py
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workers
+spec:
+  selector:
+    matchLabels:
+      app: executor
+  replicas: 0
+  template:
+    metadata:
+      labels:
+        app: executor
+    spec:
+      volumes:
+        - name: config-volume
+          configMap:
+            name: spark-master-config
+      containers:
+        - image: apache/spark:latest
+          name: worker
+          command: 
+            - /bin/bash
+          args:
+            - -c
+            - "/opt/spark/sbin/start-worker.sh spark://${SPARK_DRIVER_SERVICE_HOST}:${SPARK_DRIVER_SERVICE_PORT}"
+          env:
+            - name: SPARK_NO_DAEMONIZE
+              value: 'true'
+          volumeMounts:
+            - name: config-volume
+              mountPath: /opt/spark/fetch-jar.sh
+              subPath: fetch-jar.sh
+          # lifecycle:
+          #   postStart:
+          #     exec:
+          #       command:
+          #         - /bin/bash
+          #         - /opt/spark/fetch-jar.sh
+      nodeSelector:
+        NodeGroupType: "data-platform-memory-optimized-worker"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-master-config
+  namespace: data-platform
+data:
+  fetch-jar.sh: |
+    #!/bin/bash
+
+    (cd /opt/spark/work-dir && curl -O http://172.17.0.1:8000/spark-examples_2.12-3.5.0.jar)
+
+  deploy.py: |
+    #!/usr/bin/env python3
+    
+    import json
+    import os
+    import time
+    from urllib import request, parse
+    
+    def main():
+      payload = {
+        'appResource' : '/opt/spark/work-dir/spark-examples_2.12-3.5.0.jar',
+        'mainClass' : 'org.apache.spark.examples.JavaSparkPi',
+        'action' : 'CreateSubmissionRequest',
+        'sparkProperties' : {
+          'spark.master' : f"spark://{os.environ['SPARK_DRIVER_SERVICE_HOST']}:{os.environ['SPARK_DRIVER_SERVICE_PORT']}",
+          'spark.app.name':"pi",
+          'spark.driver.memory': "8g",
+          'spark.driver.cores':1,
+          'spark.executor.memory':"1g",
+          'spark.driver.supervise':"true",
+          'spark.cores.max':1,
+        },
+        'environmentVariables':{"TRUE":"TRUE"},
+        'appArgs':["80"],
+        'clientSparkVersion':'3.5.0',
+      }
+      print(json.dumps(payload))
+      data = json.dumps(payload).encode()
+      headers = { 'Content-Type' : 'application/json' }
+      req =  request.Request(f"http://{os.environ['SPARK_REST_SERVICE_HOST']}:6066/v1/submissions/create", data=data, headers=headers)
+      print(req)
+      print(request.urlopen(req))
+    
+    if __name__ == '__main__':
+      for i in range(30):
+        try:
+          main()
+          break
+        except exception as e:
+          print(e)
+          time.sleep(2)
+
+  spark-defaults.conf: |
+    spark.master.rest.enabled true

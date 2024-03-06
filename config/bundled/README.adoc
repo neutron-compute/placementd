@@ -1,0 +1,24 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+:toc: macro
+
+= Bundled Configuration
+
+
+This directory contains configuration that is intended to be bundled with various daemons and build processes. Do not expect to modify this configuration as this represents _system defaults_.
+
+Instead user-configuhration should happen through override files which can be
+merged with these system defaults to override various components
+
+toc::[]
+
+
+== `spark.yml`
+
+This is the foundational Spark on Kubernetes configuration used when
+provisioning on Kubernetes-like environments.
