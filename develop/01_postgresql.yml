@@ -1,15 +1,10 @@
 # This is a simple in-memory (effectively) deployment of PostgreSQL for testing
 ---
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: postgres
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: postgres-secret
-  namespace: postgres
+  namespace: placementd
   labels:
     app: postgres
 data:
@@ -21,7 +16,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: db
-  namespace: postgres
+  namespace: placementd
 spec:
   replicas: 1
   selector:
@@ -47,7 +42,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: postgres
-  namespace: postgres
+  namespace: placementd
   labels:
     app: postgres
 spec:

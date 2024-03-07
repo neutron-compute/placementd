@@ -26,10 +26,7 @@ check: Cargo.toml $(SOURCES) migrations
 .PHONY: develop
 develop:  ## Set up the development environment
 	+$(MAKE) -C $@
-	$(foreach POD, \
-		$(shell $(KUBECTL) get pod -n placementd -o custom-columns=:metadata.name), \
-		$(KUBECTL) exec -n placementd $(POD) -- /bin/sh -c "pkill placementd || true" ; \
-		$(KUBECTL) cp -n placementd $(WEBAPP) $(POD):/tmp/; )
+	./develop/copy-bins
 
 migrations: ## Run the migrations, must have `DATABASE_URL` set
 	+$(MAKE) -C $@

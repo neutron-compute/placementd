@@ -2,7 +2,7 @@
 /// The kube-provisioner worker simply looks for tasks to spawn into Kubernetes
 ///
 use kube::api::DynamicObject;
-use placementd::db::Task;
+use placementd::db::{Task, Transaction};
 use serde::Deserialize;
 use sqlx::postgres::PgListener;
 use tracing::log::*;
@@ -10,9 +10,15 @@ use uuid::Uuid;
 
 use std::fs::File;
 
+
+use kube::{Client, api::{Api, ResourceExt, ListParams, PostParams}};
+use k8s_openapi::api::core::v1::Pod;
+
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    dotenvy::dotenv()?;
+    if let Err(_) = dotenvy::dotenv() {
+        //
+    }
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         // disable printing the name of the module in every log line.
@@ -24,6 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut resources: Vec<DynamicObject> = vec![];
 
     let cwd = std::env::current_dir()?;
+    info!("Starting in {cwd:?}");
     let bundled = cwd.join("config/bundled/spark.yml");
     if !bundled.exists() {
         panic!("The configuration file is not present! I can't do anything without it, help!");
@@ -77,6 +84,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(mut tx) => {
                 if let Ok(task) = Task::lock(&mut tx, Some(&uuid), None).await {
                     info!("Found a task to work on: {task:?}");
+                    dispatch_task(&mut tx, task, &resources).await;
                 }
 
                 if let Err(e) = tx.commit().await {
@@ -94,6 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(mut tx) => {
                 if let Ok(task) = Task::lock(&mut tx, None, None).await {
                     info!("Found a lingering task to work on: {task:?}");
+                    dispatch_task(&mut tx, task, &resources).await;
                 }
 
                 if let Err(e) = tx.commit().await {
@@ -101,6 +110,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             Err(e) => error!("Failed to acquire a transaction: {e:?}"),
+        }
+    }
+}
+
+///
+/// The dispatch_task function is responsible for the primary work of this worker, ensuring that
+/// the [Task] is properly scheduled and the database is updated.
+async fn dispatch_task(_tx: &mut Transaction<'_>, task: Task, _resources: &Vec<DynamicObject>) {
+    debug!("Dispatching task ident {:?}", task.ident);
+
+     // Infer the runtime environment and try to create a Kubernetes Client
+    if let Ok(client) = Client::try_default().await {
+        // Read pods in the configured namespace into the typed interface from k8s-openapi
+        let pods: Api<Pod> = Api::default_namespaced(client);
+        if let Ok(pods) = pods.list(&ListParams::default()).await {
+            for p in pods {
+                println!("found pod {}", p.name_any());
+            }
         }
     }
 }

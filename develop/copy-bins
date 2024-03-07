@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+#
+# This file will copy binaries into development/shell containers and kill existing running versions of the application
+NAMESPACE=placementd
+KUBECTL=${KUBECTL:=kubectl}
+
+set -e
+
+${KUBECTL} get -n ${NAMESPACE} -o custom-columns=:metadata.name,:metadata.labels.app pod |
+        while read -r pods; do 
+                # Skip any empty lines in the output
+                if [ -n "${pods}" ]; then
+                        VALUES=($pods)
+                        POD="${VALUES[0]}"
+                        APP="${VALUES[1]}"
+                        BINFILE="target/debug/${APP}"
+
+                        if [ -f "${BINFILE}" ]; then
+                                echo ">> Copying config over to ${POD}"
+                                ${KUBECTL} cp -n ${NAMESPACE} config ${POD}:/;
+                                echo ">> Copying new debug ${APP}";
+                                ${KUBECTL} cp -n ${NAMESPACE} ${BINFILE} ${POD}:/tmp/;
+                                echo ">> Killing any prior instances of ${APP}";
+                                ${KUBECTL} exec -n ${NAMESPACE} ${POD} -- /bin/sh -c "pkill -xf /tmp/${APP} || true";
+                        fi;
+                fi;
+        done;
+

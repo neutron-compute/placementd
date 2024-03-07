@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Convenience type alias since
-type Transaction<'a> = sqlx::Transaction<'a, sqlx::Postgres>;
+pub type Transaction<'a> = sqlx::Transaction<'a, sqlx::Postgres>;
 
 ///
 /// Bootstrap the [sqlx::PgPool] connection using the `DATABASE_URL` environment variable or

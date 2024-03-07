@@ -47,9 +47,9 @@ check` can run all unit and integration tests.
 |
 | Full database connection string (e.g. `postgres://postgres-host/mydb`)
 
-| `CONFIG_S3_URL`
+| `CONFIG_URL`
 |
-| Full URL for loading configuration
+| Full URL for loading configuration, must be a URL scheme supported by link:https://docs.rs/object_store/latest/object_store/index.html[object_store]
 
 | `CONFIG_SNS_TOPIC_ARN`
 |
@@ -57,7 +57,7 @@ check` can run all unit and integration tests.
 
 | `KUBE_API_URL`
 |
-| URL to the Kubernetes API that `placementd` can trigger
+| URL to the Kubernetes API that the placementd `kube-provisioner` can provision Spark infrastructure
 
 | `RUST_LOG`
 |
@@ -69,6 +69,15 @@ check` can run all unit and integration tests.
 
 
 === Database task system
+
+
+==== Task States
+
+* `planned` : default task state, all new submissions are in this state
+* `provisioning` : task has been submitted to a provisioner (e.g. Kubernetes)
+* `running` : task has started running in the provisioner, in the Kubernetes example this means that the Spark cluster is online and running the job
+* `completed` : the Spark job has completed but its resources/reporting has not yet finished.
+* `finalized` : all resources associated with the task have been deprovisioned.
 
 * When a runsubmit API call is is received a new task is created in the database: state = PLANNED
 * SubmitWorker does a SELECT * FROM tasks WHERE state = PLANNED FOR UPDATE LIMIT 1

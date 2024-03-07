@@ -1,0 +1,84 @@
+# This file contains the resource to provision a development placementd inside the kubernetes test environment
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: common-env
+  namespace: placementd
+data:
+  RUST_LOG: debug
+  DATABASE_URL: 'postgres://placementd:VerySecure!@postgres:5432/placementd'
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: placementd-web
+  namespace: placementd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: placementd-web
+  template:
+    metadata:
+      labels:
+        app: placementd-web
+    spec:
+      containers:
+        - name: placementd
+          image: ubuntu:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: common-env
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - cd / && while true; do /tmp/placementd-web; sleep 1; done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: placementd
+  namespace: placementd
+  labels:
+    app: placementd-web
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      nodePort: 30080
+  selector:
+    app: placementd-web
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-provisioner
+  namespace: placementd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-provisioner
+  template:
+    metadata:
+      labels:
+        app: kube-provisioner
+    spec:
+      containers:
+        - name: kube-provisioner
+          image: ubuntu:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: common-env
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - cd / && env && while true; do /tmp/kube-provisioner; sleep 1; done
+          ports:
