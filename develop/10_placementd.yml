@@ -80,5 +80,5 @@ spec:
             - /bin/sh
           args:
             - -c
-            - cd / && env && while true; do /tmp/kube-provisioner; sleep 1; done
+            - cd / && while true; do /tmp/kube-provisioner; sleep 1; done
           ports:

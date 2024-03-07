@@ -18,7 +18,7 @@ ${KUBECTL} get -n ${NAMESPACE} -o custom-columns=:metadata.name,:metadata.labels
                         if [ -f "${BINFILE}" ]; then
                                 echo ">> Copying config over to ${POD}"
                                 ${KUBECTL} cp -n ${NAMESPACE} config ${POD}:/;
-                                echo ">> Copying new debug ${APP}";
+                                echo ">> Copying new ${BINFILE} to ${APP}";
                                 ${KUBECTL} cp -n ${NAMESPACE} ${BINFILE} ${POD}:/tmp/;
                                 echo ">> Killing any prior instances of ${APP}";
                                 ${KUBECTL} exec -n ${NAMESPACE} ${POD} -- /bin/sh -c "pkill -xf /tmp/${APP} || true";
